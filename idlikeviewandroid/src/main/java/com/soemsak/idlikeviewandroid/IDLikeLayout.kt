@@ -5,7 +5,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.support.v4.view.ViewPager
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.widget.RelativeLayout
 import android.view.MotionEvent
@@ -21,8 +20,10 @@ import android.animation.ObjectAnimator
 import android.graphics.Color
 import android.graphics.drawable.AnimationDrawable
 import android.graphics.drawable.StateListDrawable
+import android.media.MediaPlayer
 import android.os.Handler
-import android.view.animation.Animation
+import android.text.Layout
+import android.util.Log
 import android.view.animation.TranslateAnimation
 
 class IDLikeLayout: RelativeLayout {
@@ -51,7 +52,10 @@ class IDLikeLayout: RelativeLayout {
     lateinit var gestureDetector: GestureDetector
     var heartPumpingAnimationSet:AnimatorSet = AnimatorSet()
 
-    lateinit var heartPumpingImageView: ImageView
+    var heartPumpingImageView: ImageView? = null
+
+//    var heartSoundEffect:MediaPlayer? = null
+    var heartPumpingSoundEffect:MediaPlayer? = null
 
     constructor(context: Context) : super(context){
         init(context)
@@ -62,7 +66,22 @@ class IDLikeLayout: RelativeLayout {
     }
 
     override fun onDraw(canvas: Canvas) {
-        canvas.drawPath(path, paint)
+        super.onDraw(canvas)
+
+
+        if(heartPumpingImageView == null) {
+            heartPumpingImageView = ImageView(context)
+            heartPumpingImageView!!.setBackgroundColor(Color.GRAY)
+            heartPumpingImageView!!.visibility = View.INVISIBLE
+            prepareHeartPumpingImages(heartPumpingImageView!!)
+            heartPumpingImageView!!.setBackgroundColor(Color.RED)
+            heartPumpingImageView!!.scaleType = ImageView.ScaleType.CENTER_INSIDE;
+
+            val params = RelativeLayout.LayoutParams(this.measuredWidth, (this.measuredWidth.toFloat() * 0.6).toInt())
+            params.addRule(RelativeLayout.CENTER_HORIZONTAL)
+            params.addRule(RelativeLayout.CENTER_VERTICAL)
+            this@IDLikeLayout.addView(heartPumpingImageView, params)
+        }
     }
 
     fun prepareHeartClickImages(likeStickerImageView: ImageView){
@@ -86,11 +105,13 @@ class IDLikeLayout: RelativeLayout {
     }
 
     fun animateStartWhenHold() {
-        heartPumpingImageView.visibility = View.VISIBLE
+        heartPumpingImageView!!.visibility = View.VISIBLE
         heartPumpingAnimationDrawable.start()
     }
 
     fun init(context:Context) {
+        this.setWillNotDraw(false)
+
         var rootView = inflate(context, R.layout.id_like_layout, this)
         pager = rootView.findViewById<ViewPager>(R.id.pager)
         var imageUrls = ArrayList<String>()
@@ -99,21 +120,11 @@ class IDLikeLayout: RelativeLayout {
         imageUrls.add("https://google.com")
         pager.adapter = SlidingImageAdapter(context,imageUrls)
 
-        heartPumpingImageView = ImageView(context)
-        heartPumpingImageView.setBackgroundColor(Color.GRAY)
-        heartPumpingImageView.visibility = View.INVISIBLE
-        prepareHeartPumpingImages(heartPumpingImageView)
-        heartPumpingImageView.scaleType = ImageView.ScaleType.FIT_CENTER
-//        val layoutParams = LinearLayout.LayoutParams( LayoutParams.MATCH_PARENT,  LayoutParams.MATCH_PARENT)
-//        heartPumpingImageView.layoutParams = layoutParams
-        val params = RelativeLayout.LayoutParams( 1080, 650)
-        params.addRule(RelativeLayout.CENTER_HORIZONTAL)
-        params.addRule(RelativeLayout.CENTER_VERTICAL)
-        params.leftMargin = 0
-        params.topMargin = 0
-        params.rightMargin = 0
-        params.bottomMargin = 0
-        this@IDLikeLayout.addView(heartPumpingImageView, params)
+
+//        val params = RelativeLayout.LayoutParams(-1,-1)
+//        params.addRule(RelativeLayout.CENTER_HORIZONTAL)
+//        params.addRule(RelativeLayout.CENTER_VERTICAL)
+//        this@IDLikeLayout.addView(heartPumpingImageView, params)
 
         val _longPressed = Runnable {
 
@@ -128,12 +139,14 @@ class IDLikeLayout: RelativeLayout {
             })
             heartPumpingAnimationSet.start()
 
-            this@IDLikeLayout.heartPumpingImageView.setImageDrawable(StateListDrawable())
-            heartPumpingImageView.setImageDrawable(StateListDrawable())
-            prepareHeartPumpingImages(heartPumpingImageView)
+            this@IDLikeLayout.heartPumpingImageView!!.setImageDrawable(StateListDrawable())
+            heartPumpingImageView!!.setImageDrawable(StateListDrawable())
+            prepareHeartPumpingImages(heartPumpingImageView!!)
             isLongPressLike = true
-            heartPumpingImageView.visibility = View.VISIBLE
+            heartPumpingImageView!!.visibility = View.VISIBLE
             this@IDLikeLayout.animateStartWhenHold()
+            playPumping()
+
         }
 
         this.pager.setOnTouchListener(object: OnTouchListener{
@@ -156,16 +169,22 @@ class IDLikeLayout: RelativeLayout {
                     timeReleased = Date().time
                     longPressHandler.removeCallbacks(_longPressed)
                     if(isLongPressLike) { //ดึงมือขึ้นจากการ hold
-                        isLongPressLike = false
+                        try {
+                            heartPumpingSoundEffect!!.stop()
+                        }catch (ex:Exception){
 
+                        }
+                        isLongPressLike = false
                         val r1 = Random()
-                        val i1 = r1.nextInt(50 - 20 + 1) + 20
+                        var i1 = r1.nextInt(40 - 10 + 1) + 10
+                        if((i1%2) == 0){
+                            i1 = i1 * (-1)
+                        }
                         val r2 = Random()
-                        val i2 = r2.nextInt(100 - 40 + 1) + 40
+                        val i2 = r2.nextInt(120 - 60 + 1) + 60
                         val anim = TranslateAnimation(0f, -1f * i1, 0.0f, -1f * i2 )
                         anim.setDuration(500)
-                        heartPumpingImageView.startAnimation(anim)
-
+                        heartPumpingImageView!!.startAnimation(anim)
 
                         val fadeOut = ObjectAnimator.ofFloat(heartPumpingImageView, "alpha", 1f, .0f)
                         fadeOut.duration = 500
@@ -174,26 +193,29 @@ class IDLikeLayout: RelativeLayout {
                         heartPumpingAnimationSet.addListener(object : AnimatorListenerAdapter() {
                             override fun onAnimationEnd(animation: Animator) {
                                 super.onAnimationEnd(animation)
-                                heartPumpingImageView.setImageResource(0);
-                                heartPumpingImageView.setImageDrawable(null);
-                                heartPumpingImageView.setBackgroundDrawable(null)
+                                heartPumpingImageView!!.setImageResource(0);
+                                heartPumpingImageView!!.setImageDrawable(null);
+                                heartPumpingImageView!!.setBackgroundDrawable(null)
                                 var likevalue = disapearAnimateWhenTouchOutFromHold(timeClicked, timeReleased)
                             }
                         })
                         heartPumpingAnimationSet.start()
-
-
-
                     }else{
+
+
+//                        this@IDLikeLayout.heartSoundEffect!!.seekTo(0)
+//                        this@IDLikeLayout.heartSoundEffect!!.start()
+
                         isLongPressLike = false
                         val clickDuration = Calendar.getInstance().getTimeInMillis() - startClickTime
                         if (clickDuration < MAX_CLICK_DURATION) {
                             val pointerCount = event.getPointerCount()
                             val pointerId = event.getPointerId(0)
                         }
-
                         val pressDuration = System.currentTimeMillis() - pressStartTime
                         if (pressDuration < MAX_CLICK_DURATION && distance(pressedX, pressedY, event.getX(), event.getY()) < MAX_CLICK_DISTANCE) {
+                            playBeep()
+//                            this@IDLikeLayout.heartSoundEffect = MediaPlayer.create(context, R.raw.heartclick)
                             val imageView = ImageView(context)
                             prepareHeartClickImages(imageView)
                             imageView.scaleType = ImageView.ScaleType.FIT_XY
@@ -217,9 +239,9 @@ class IDLikeLayout: RelativeLayout {
                                 }
                             })
                             mAnimationSet.start()
+
                         }
                     }
-
                 }
                 return false
             }
@@ -245,5 +267,46 @@ class IDLikeLayout: RelativeLayout {
             like = 100
         }
         return like
+    }
+
+    fun playBeep() {
+        try {
+
+            var heartSoundEffect = MediaPlayer()
+            var descriptor = context.getAssets().openFd("heartclick.mp3")
+            heartSoundEffect!!.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength())
+            descriptor.close()
+            heartSoundEffect!!.prepare()
+
+            heartSoundEffect!!.setVolume(1f, 1f)
+            heartSoundEffect!!.setLooping(false)
+            heartSoundEffect!!.seekTo(0)
+            heartSoundEffect!!.setOnCompletionListener {
+                heartSoundEffect!!.release()
+            }
+            heartSoundEffect!!.start()
+        } catch (e:Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun playPumping() {
+        try {
+            heartPumpingSoundEffect = MediaPlayer()
+            var descriptor = context.getAssets().openFd("heartsound.mp3")
+            heartPumpingSoundEffect!!.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength())
+            descriptor.close()
+            heartPumpingSoundEffect!!.prepare()
+
+            heartPumpingSoundEffect!!.setVolume(1f, 1f)
+            heartPumpingSoundEffect!!.setLooping(false)
+            heartPumpingSoundEffect!!.seekTo(1000)
+            heartPumpingSoundEffect!!.setOnCompletionListener {
+                heartPumpingSoundEffect!!.release()
+            }
+            heartPumpingSoundEffect!!.start()
+        } catch (e:Exception) {
+            e.printStackTrace()
+        }
     }
 }
