@@ -270,28 +270,44 @@ class IDLikeLayout: RelativeLayout {
     }
 
     fun playBeep() {
+        var heartSoundEffect = MediaPlayer()
         try {
-
-            var heartSoundEffect = MediaPlayer()
             var descriptor = context.getAssets().openFd("heartclick.mp3")
-            heartSoundEffect!!.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength())
+            heartSoundEffect.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength())
             descriptor.close()
-            heartSoundEffect!!.prepare()
+            heartSoundEffect.prepare()
 
-            heartSoundEffect!!.setVolume(1f, 1f)
-            heartSoundEffect!!.setLooping(false)
-            heartSoundEffect!!.seekTo(0)
-            heartSoundEffect!!.setOnCompletionListener {
-                heartSoundEffect!!.release()
+            heartSoundEffect.setVolume(1f, 1f)
+            heartSoundEffect.setLooping(false)
+            heartSoundEffect.seekTo(0)
+            heartSoundEffect.setOnCompletionListener {
+                heartSoundEffect.stop()
+                heartSoundEffect.release()
             }
-            heartSoundEffect!!.start()
+            heartSoundEffect.start()
         } catch (e:Exception) {
+            try {
+                heartSoundEffect.stop()
+                heartSoundEffect.release()
+            }catch (e:Exception) {
+                heartSoundEffect.release()
+            }
             e.printStackTrace()
         }
     }
 
     fun playPumping() {
         try {
+            if (heartPumpingSoundEffect != null) {
+                try {
+//                    if (heartPumpingSoundEffect!!.isPlaying()) {
+                        heartPumpingSoundEffect!!.stop()
+                        heartPumpingSoundEffect!!.release()
+//                    }
+                }catch (e:Exception) {
+                    heartPumpingSoundEffect!!.release()
+                }
+            }
             heartPumpingSoundEffect = MediaPlayer()
             var descriptor = context.getAssets().openFd("heartsound.mp3")
             heartPumpingSoundEffect!!.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength())
@@ -302,10 +318,17 @@ class IDLikeLayout: RelativeLayout {
             heartPumpingSoundEffect!!.setLooping(false)
             heartPumpingSoundEffect!!.seekTo(1000)
             heartPumpingSoundEffect!!.setOnCompletionListener {
+//                heartPumpingSoundEffect!!.stop()
                 heartPumpingSoundEffect!!.release()
             }
             heartPumpingSoundEffect!!.start()
         } catch (e:Exception) {
+            try {
+                heartPumpingSoundEffect!!.stop()
+                heartPumpingSoundEffect!!.release()
+            }catch (e:Exception) {
+                heartPumpingSoundEffect!!.release()
+            }
             e.printStackTrace()
         }
     }
